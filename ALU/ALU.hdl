@@ -1,0 +1,77 @@
+/**
+ * 16-bit Hack ALU from the book "The Elements of Computing Systems"
+ * by Nisan and Schocken, MIT Press.
+ * 
+ * The ALU computes one of the following functions:
+ * x+y, x-y, y-x, 0, 1, -1, x, y, -x, -y, !x, !y,
+ * x+1, y+1, x-1, y-1, x&y, x|y on two 16-bit inputs, 
+ * according to 6 input bits denoted zx,nx,zy,ny,f,no.
+ * 
+ * In addition, the ALU computes two 1-bit outputs:
+ * if the ALU output == 0, zr is set to 1; otherwise zr is set to 0;
+ * if the ALU output < 0, ng is set to 1; otherwise ng is set to 0.
+ * 
+ * Implementation: the ALU logic manipulates the x and y inputs
+ * and operates on the resulting values, as follows:
+ * if (zx == 1) set x = 0        // 16-bit constant
+ * if (nx == 1) set x = !x       // bitwise not
+ * if (zy == 1) set y = 0        // 16-bit constant
+ * if (ny == 1) set y = !y       // bitwise not
+ * if (f == 1)  set out = x + y  // integer 2's complement addition
+ * if (f == 0)  set out = x & y  // bitwise and
+ * if (no == 1) set out = !out   // bitwise not
+ * if (out == 0) set zr = 1
+ * if (out < 0) set ng = 1
+ * 
+ * Author: Naga Kandasamy
+ * Date created: July 10, 2020
+ * Date modified: July 1, 2023
+ * 
+ * Name of student: Noah Robinson
+ * Date modified: 7/6/23
+*/
+
+CHIP ALU {
+    IN  
+        x[16], y[16],       // 16-bit inputs        
+        zx,                 // zero the x input?
+        nx,                 // negate the x input?
+        zy,                 // zero the y input?
+        ny,                 // negate the y input?
+        f,                  // compute out = x + y (if 1) or x & y (if 0)
+        no;                 // negate the out output?
+
+    OUT 
+        out[16],            // 16-bit output
+        zr,                 // 1 if (out == 0), 0 otherwise
+        ng;                 // 1 if (out < 0),  0 otherwise
+
+    PARTS:
+    // TODO: complete the implementation of the ALU
+
+    // zx and nx
+    Mux16(a=x[0..15], b=false, sel=zx, out=Xtemp1);
+    Not16(in=Xtemp1, out=XNot);
+    Mux16(a=Xtemp1, b=XNot, sel=nx, out=Xtemp2);
+   
+    // zy and ny
+    Mux16(a=y[0..15], b=false, sel=zy, out=Ytemp1);
+    Not16(in=Ytemp1, out=YNot);
+    Mux16(a=Ytemp1, b=YNot, sel=ny, out=Ytemp2);
+
+    // f
+    And16(a=Xtemp2, b=Ytemp2, out=XYTempAND);
+    Add16(a=Xtemp2, b=Ytemp2, out=XYTempADD);
+    Mux16(a=XYTempAND, b=XYTempADD, sel=f, out=outtemp);
+
+    // no and ng
+    Not16(in=outtemp, out=outNot);
+    Mux16(a=outtemp, b=outNot, sel=no, out = out, out[0..7] = lsb, out[8..15] = msb, out[15]= ng);
+
+    // zr
+    Or8Way(in=lsb, out=ortemp1);
+    Or8Way(in=msb, out=ortemp2);
+    Or(a=ortemp1, b=ortemp2, out=zrtemp);
+    Not(in=zrtemp, out=zr);
+
+}
